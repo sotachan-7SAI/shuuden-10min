@@ -25,14 +25,14 @@ function unlock() {
 function free(el) {
   if (!el) return;
   try { el.pause(); } catch (e) {}
-  el.onended = el.onerror = el.oncanplay = null;
+  el.onended = el.onerror = el.oncanplay = el.onplaying = null;
   el.remove(); el.removeAttribute('poster'); delete el.dataset.use;
   if (!POOL.includes(el)) POOL.push(el);
 }
 function mk(name, loop) {
   const v = POOL.pop() || newVideo();
   v.dataset.use = '1';
-  v.onended = v.onerror = v.oncanplay = null;
+  v.onended = v.onerror = v.oncanplay = v.onplaying = null;
   v.removeAttribute('poster');
   v.loop = !!loop; v.muted = !!loop;
   v.style.opacity = 0; v.style.zIndex = '';
@@ -73,18 +73,19 @@ function playTalk(name, line) {
     curEl = el;
     el.style.zIndex = ++zTop;
     let started = false;
-    const go = () => {
+    const show = () => {
       if (started) return;
       started = true;
       el.style.opacity = 1;
-      const p = el.play();
-      if (p) p.catch((e) => { if (e && e.name === 'NotAllowedError') needTap(el); });
       setLine(line);
       if (prev) setTimeout(() => free(prev), 150);
     };
+    el.onplaying = show;
     el.onended = () => res();
-    el.onerror = () => { setLine(line); setTimeout(res, 2500); };
-    if (el.readyState >= 3) go(); else { el.oncanplay = go; setTimeout(go, 1200); }
+    el.onerror = () => { show(); setTimeout(res, 2500); };
+    const p = el.play();
+    if (p) p.catch((e) => { if (e && e.name === 'NotAllowedError') { show(); needTap(el); } });
+    setTimeout(show, 3000);
   });
 }
 function toIdle() {
